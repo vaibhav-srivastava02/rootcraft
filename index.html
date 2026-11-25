@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RootCraft — Cybersecurity Learning Platform</title>
+  <link rel="icon" href="./assets/favicon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cyber: {
+              green: '#00ff88',
+              dark: '#030712',
+              card: '#0b1329',
+              border: 'rgba(0, 255, 136, 0.2)'
+            }
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'Fira Code', 'Courier New', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #030712;
+      color: #f3f4f6;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .neon-border {
+      box-shadow: 0 0 15px rgba(0, 255, 136, 0.15);
+    }
+
+    .neon-text {
+      text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    }
+
+    #matrix-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0.04;
+      z-index: 0;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b1329;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #00ff88;
+    }
+
+    /* Accordion transitions */
+    .accordion-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+    .accordion-content.open {
+      max-height: 2000px;
+    }
+
+    /* Custom scroll container */
+    .custom-scroll {
+      overflow-y: auto;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #0b1329;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 3px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #00ff88;
+    }
+  </style>
+  <noscript>
+    <style>body > *:not(noscript) { display: none !important; }</style>
+    <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#030712;color:#f3f4f6;font-family:Inter,sans-serif;text-align:center;padding:2rem;">
+      <div>
+        <h1 style="font-size:1.5rem;margin-bottom:1rem;color:#00ff88;">⚠️ JavaScript Required</h1>
+        <p>RootCraft requires JavaScript to run. Please enable JavaScript in your browser settings and reload the page.</p>
+      </div>
+    </div>
+  </noscript>
+</head>
+<body class="min-h-screen">
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- HEADER                                        -->
+  <!-- ══════════════════════════════════════════════ -->
+  <header class="sticky top-0 z-40 border-b border-emerald-950/60 bg-slate-950/80 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 shrink-0">
+          <i class="fa-solid fa-shield-halved text-2xl text-emerald-400"></i>
+          <div>
+            <span class="text-lg font-bold tracking-wider neon-text text-emerald-400 font-mono">RootCraft</span>
+            <p class="text-[10px] text-slate-500 -mt-1 tracking-wide">Craft Your Root-Level Security Skills</p>
+          </div>
+        </div>
+
+        <!-- Desktop Nav -->
+        <nav id="desktop-nav" class="hidden md:flex items-center gap-1">
+          <button data-tab="tab-terminal" class="tab-btn active-tab font-mono text-xs px-3 py-1.5 rounded-md transition-all duration-200 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+            <i class="fa-solid fa-terminal mr-1.5"></i>Sandbox
+          </button>
+          <button data-tab="tab-tools" class="tab-btn font-mono text-xs px-3 py-1.5 rounded-md transition-all duration-200 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10">
+            <i class="fa-solid fa-screwdriver-wrench mr-1.5"></i>Tools
+          </button>
+          <button data-tab="tab-ai" class="tab-btn font-mono text-xs px-3 py-1.5 rounded-md transition-all duration-200 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10">
+            <i class="fa-solid fa-brain mr-1.5"></i>AI Copilot
+          </button>
+          <button data-tab="tab-roadmap" class="tab-btn font-mono text-xs px-3 py-1.5 rounded-md transition-all duration-200 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10">
+            <i class="fa-solid fa-route mr-1.5"></i>Roadmap
+          </button>
+          <button data-tab="tab-utilities" class="tab-btn font-mono text-xs px-3 py-1.5 rounded-md transition-all duration-200 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10">
+            <i class="fa-solid fa-toolbox mr-1.5"></i>Utilities
+          </button>
+          <button data-tab="tab-auth" id="auth-nav-btn" class="tab-btn font-mono text-xs px-3 py-1.5 rounded-md transition-all duration-200 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10 ml-2 border border-slate-700">
+            <i class="fa-solid fa-right-to-bracket mr-1.5"></i><span id="auth-btn-text">Sign In</span>
+          </button>
+        </nav>
+
+        <!-- Mobile Hamburger -->
+        <button id="mobile-menu-btn" class="md:hidden text-slate-400 hover:text-emerald-400 transition-colors p-2">
+          <i class="fa-solid fa-bars text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Mobile Dropdown Nav -->
+      <nav id="mobile-nav" class="hidden md:hidden pb-4 border-t border-emerald-950/40 pt-3 space-y-1">
+        <button data-tab="tab-terminal" class="tab-btn mobile-tab-btn w-full text-left font-mono text-xs px-3 py-2 rounded-md transition-all duration-200 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+          <i class="fa-solid fa-terminal mr-2"></i>Sandbox
+        </button>
+        <button data-tab="tab-tools" class="tab-btn mobile-tab-btn w-full text-left font-mono text-xs px-3 py-2 rounded-md transition-all duration-200 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10">
+          <i class="fa-solid fa-screwdriver-wrench mr-2"></i>Tools
+        </button>
+        <button data-tab="tab-ai" class="tab-btn mobile-tab-btn w-full text-left font-mono text-xs px-3 py-2 rounded-md transition-all duration-200 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10">
+          <i class="fa-solid fa-brain mr-2"></i>AI Copilot
+        </button>
+        <button data-tab="tab-roadmap" class="tab-btn mobile-tab-btn w-full text-left font-mono text-xs px-3 py-2 rounded-md transition-all duration-200 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10">
+          <i class="fa-solid fa-route mr-2"></i>Roadmap
+        </button>
+        <button data-tab="tab-utilities" class="tab-btn mobile-tab-btn w-full text-left font-mono text-xs px-3 py-2 rounded-md transition-all duration-200 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10">
+          <i class="fa-solid fa-toolbox mr-2"></i>Utilities
+        </button>
+        <button data-tab="tab-auth" class="tab-btn mobile-tab-btn w-full text-left font-mono text-xs px-3 py-2 rounded-md transition-all duration-200 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-slate-700">
+          <i class="fa-solid fa-right-to-bracket mr-2"></i><span class="auth-btn-text-mobile">Sign In</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- MATRIX CANVAS                                 -->
+  <!-- ══════════════════════════════════════════════ -->
+  <canvas id="matrix-canvas"></canvas>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- MAIN CONTENT                                  -->
+  <!-- ══════════════════════════════════════════════ -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 z-10 relative">
+
+    <!-- ───────────────────────────────────────── -->
+    <!-- VIEW 1: Terminal Sandbox                  -->
+    <!-- ───────────────────────────────────────── -->
+    <section id="view-terminal" class="max-w-4xl mx-auto">
+      <!-- Status bar -->
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+          <span class="relative flex h-2.5 w-2.5">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <span class="text-sm text-slate-300 font-medium">Interactive Kali Terminal Sandbox</span>
+        </div>
+        <span class="text-xs text-slate-500 font-mono">Environment: kali-linux-2026 (sandboxed)</span>
+      </div>
+
+      <!-- Terminal Window -->
+      <div class="rounded-2xl border border-emerald-500/30 bg-black/90 neon-border overflow-hidden">
+        <!-- Title Bar -->
+        <div class="flex items-center gap-2 px-4 py-3 bg-slate-900/80 border-b border-slate-800">
+          <div class="flex gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+            <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+            <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+          </div>
+          <span class="text-xs text-slate-500 font-mono ml-2">kali@kali:~#</span>
+        </div>
+
+        <!-- Terminal Output -->
+        <div id="terminal-output" class="custom-scroll p-4 font-mono text-sm leading-relaxed" style="min-height: 380px; max-height: 460px;">
+          <p class="text-emerald-400">┌──────────────────────────────────────────────┐</p>
+          <p class="text-emerald-400">│  Welcome to <span class="text-white font-bold">RootCraft</span> Terminal Sandbox    │</p>
+          <p class="text-emerald-400">│  Kali Linux 2026 — Simulated Environment     │</p>
+          <p class="text-emerald-400">└──────────────────────────────────────────────┘</p>
+          <p class="text-slate-500 mt-2">Type <span class="text-amber-400">help</span> to see available commands.</p>
+          <p class="text-slate-500">For educational and defensive research only.</p>
+        </div>
+
+        <!-- Terminal Input -->
+        <form id="terminal-form" class="flex items-center gap-2 px-4 py-3 bg-slate-900/40 border-t border-slate-800">
+          <span class="text-emerald-400 font-mono text-sm shrink-0">kali@kali:~#</span>
+          <input
+            id="terminal-input"
+            type="text"
+            class="flex-1 bg-transparent text-slate-200 font-mono text-sm outline-none placeholder-slate-600"
+            placeholder="Enter command..."
+            autocomplete="off"
+            spellcheck="false"
+          >
+        </form>
+      </div>
+
+      <!-- Quick Commands -->
+      <div class="flex flex-wrap gap-2 mt-4">
+        <span class="text-xs text-slate-500 mr-1 self-center">Quick:</span>
+        <button class="quick-cmd text-xs font-mono px-2.5 py-1 rounded-md bg-slate-800/80 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-slate-700 hover:border-emerald-500/40 transition-all" data-cmd="help">help</button>
+        <button class="quick-cmd text-xs font-mono px-2.5 py-1 rounded-md bg-slate-800/80 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-slate-700 hover:border-emerald-500/40 transition-all" data-cmd="nmap 10.10.10.1">nmap 10.10.10.1</button>
+        <button class="quick-cmd text-xs font-mono px-2.5 py-1 rounded-md bg-slate-800/80 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-slate-700 hover:border-emerald-500/40 transition-all" data-cmd="sqlmap">sqlmap</button>
+        <button class="quick-cmd text-xs font-mono px-2.5 py-1 rounded-md bg-slate-800/80 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-slate-700 hover:border-emerald-500/40 transition-all" data-cmd="gobuster">gobuster</button>
+        <button class="quick-cmd text-xs font-mono px-2.5 py-1 rounded-md bg-slate-800/80 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-slate-700 hover:border-emerald-500/40 transition-all" data-cmd="whoami">whoami</button>
+        <button class="quick-cmd text-xs font-mono px-2.5 py-1 rounded-md bg-slate-800/80 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-slate-700 hover:border-emerald-500/40 transition-all" data-cmd="clear">clear</button>
+      </div>
+    </section>
+
+    <!-- ───────────────────────────────────────── -->
+    <!-- VIEW 2: Tools Directory                   -->
+    <!-- ───────────────────────────────────────── -->
+    <section id="view-tools" class="hidden">
+      <!-- Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <h2 class="text-2xl font-bold text-slate-100">
+          <i class="fa-solid fa-screwdriver-wrench text-emerald-400 mr-2"></i>Kali Linux Tool Directory
+        </h2>
+        <div class="relative w-full sm:w-72">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+          <input
+            id="tools-search"
+            type="text"
+            placeholder="Search tools..."
+            class="w-full pl-9 pr-4 py-2 rounded-lg bg-slate-800/80 border border-slate-700 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+          >
+        </div>
+      </div>
+
+      <!-- Category Filters -->
+      <div class="flex flex-wrap gap-2 mb-6">
+        <button class="filter-btn active-filter text-xs font-mono px-3 py-1.5 rounded-full transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" data-category="all">All</button>
+        <button class="filter-btn text-xs font-mono px-3 py-1.5 rounded-full transition-all bg-slate-800 text-slate-400 border border-slate-700 hover:text-emerald-300 hover:border-emerald-500/40" data-category="recon">Recon</button>
+        <button class="filter-btn text-xs font-mono px-3 py-1.5 rounded-full transition-all bg-slate-800 text-slate-400 border border-slate-700 hover:text-emerald-300 hover:border-emerald-500/40" data-category="web">Web Pentest</button>
+        <button class="filter-btn text-xs font-mono px-3 py-1.5 rounded-full transition-all bg-slate-800 text-slate-400 border border-slate-700 hover:text-emerald-300 hover:border-emerald-500/40" data-category="password">Password</button>
+        <button class="filter-btn text-xs font-mono px-3 py-1.5 rounded-full transition-all bg-slate-800 text-slate-400 border border-slate-700 hover:text-emerald-300 hover:border-emerald-500/40" data-category="exploitation">Exploitation</button>
+        <button class="filter-btn text-xs font-mono px-3 py-1.5 rounded-full transition-all bg-slate-800 text-slate-400 border border-slate-700 hover:text-emerald-300 hover:border-emerald-500/40" data-category="sniffing">Sniffing</button>
+        <button class="filter-btn text-xs font-mono px-3 py-1.5 rounded-full transition-all bg-slate-800 text-slate-400 border border-slate-700 hover:text-emerald-300 hover:border-emerald-500/40" data-category="wireless">Wireless</button>
+      </div>
+
+      <!-- Tools Grid (rendered by JS) -->
+      <div id="tools-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Populated by app.js using data from data.js -->
+      </div>
+    </section>
+
+    <!-- ───────────────────────────────────────── -->
+    <!-- VIEW 3: AI Copilot                        -->
+    <!-- ───────────────────────────────────────── -->
+    <section id="view-ai" class="hidden max-w-4xl mx-auto">
+      <!-- Status bar -->
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-brain text-emerald-400"></i>
+          <span class="text-sm text-slate-300 font-medium">AI Cybersecurity Assistant</span>
+        </div>
+        <span id="ai-quota-badge" class="text-xs font-mono px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+          <i class="fa-solid fa-message mr-1"></i><span id="ai-quota-count">10</span> queries remaining
+        </span>
+      </div>
+
+      <!-- Chat Container -->
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden">
+        <!-- Chat History -->
+        <div id="ai-chat-history" class="custom-scroll p-4 space-y-4" style="min-height: 350px; max-height: 460px;">
+          <!-- Welcome message -->
+          <div class="flex gap-3">
+            <div class="shrink-0 w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+              <i class="fa-solid fa-robot text-emerald-400 text-sm"></i>
+            </div>
+            <div class="bg-slate-800/60 rounded-xl rounded-tl-sm px-4 py-3 max-w-[85%]">
+              <p class="text-sm text-slate-300">Hello! I'm your AI cybersecurity copilot. Ask me about penetration testing techniques, tool usage, vulnerability analysis, or security concepts. How can I help you today?</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Input -->
+        <form id="ai-chat-form" class="flex items-center gap-2 px-4 py-3 border-t border-slate-800">
+          <input
+            id="ai-chat-input"
+            type="text"
+            class="flex-1 bg-slate-800/60 rounded-lg px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 outline-none border border-slate-700 focus:border-emerald-500/50 transition-all"
+            placeholder="Ask about cybersecurity..."
+            autocomplete="off"
+          >
+          <button type="submit" class="shrink-0 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ───────────────────────────────────────── -->
+    <!-- VIEW 4: Roadmap                           -->
+    <!-- ───────────────────────────────────────── -->
+    <section id="view-roadmap" class="hidden max-w-5xl mx-auto">
+      <!-- Header -->
+      <div class="mb-8 text-center">
+        <h2 class="text-2xl sm:text-3xl font-bold text-slate-100 mb-2">
+          <i class="fa-solid fa-route text-emerald-400 mr-2"></i>Cybersecurity Career Roadmap
+        </h2>
+        <p class="text-sm text-slate-400">12 specialized tracks from beginner to expert</p>
+      </div>
+
+      <!-- Track Selector Grid -->
+      <div id="track-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Populated by app.js using ROADMAP from data.js -->
+      </div>
+
+      <!-- Track Detail (hidden initially) -->
+      <div id="track-detail" class="hidden mt-8">
+        <!-- Back button -->
+        <button id="track-back-btn" class="flex items-center gap-2 text-sm text-slate-400 hover:text-emerald-400 transition-colors mb-6">
+          <i class="fa-solid fa-arrow-left"></i>
+          <span>Back to all tracks</span>
+        </button>
+
+        <!-- Track Info -->
+        <div id="track-info" class="mb-6">
+          <!-- Filled by JS: title, description, prerequisites, certifications -->
+        </div>
+
+        <!-- Phases Accordion -->
+        <div id="track-phases" class="space-y-3">
+          <!-- Filled by JS: expandable phases with topics, tools, resources -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────────────────────── -->
+    <!-- VIEW 5: Utilities                         -->
+    <!-- ───────────────────────────────────────── -->
+    <section id="view-utilities" class="hidden max-w-4xl mx-auto">
+      <h2 class="text-2xl font-bold text-slate-100 mb-6">
+        <i class="fa-solid fa-toolbox text-emerald-400 mr-2"></i>Security Utilities
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Base64 Encoder/Decoder -->
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+          <h3 class="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-code text-emerald-400"></i>Base64 Encoder / Decoder
+          </h3>
+          <textarea
+            id="base64-input"
+            rows="3"
+            class="w-full bg-slate-800/80 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 border border-slate-700 outline-none focus:border-emerald-500/50 resize-none font-mono transition-all"
+            placeholder="Enter text to encode or Base64 to decode..."
+          ></textarea>
+          <div class="flex gap-2 mt-3">
+            <button id="base64-encode-btn" class="flex-1 text-xs font-mono px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 transition-all">Encode</button>
+            <button id="base64-decode-btn" class="flex-1 text-xs font-mono px-3 py-2 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition-all">Decode</button>
+          </div>
+          <div id="base64-output" class="mt-3 p-3 rounded-lg bg-black/40 text-xs font-mono text-slate-400 min-h-[2.5rem] break-all"></div>
+        </div>
+
+        <!-- Hash Identifier -->
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+          <h3 class="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-fingerprint text-emerald-400"></i>Hash Identifier
+          </h3>
+          <input
+            id="hash-input"
+            type="text"
+            class="w-full bg-slate-800/80 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 border border-slate-700 outline-none focus:border-emerald-500/50 font-mono transition-all"
+            placeholder="Paste a hash to identify..."
+          >
+          <div class="flex gap-2 mt-3">
+            <button id="hash-analyze-btn" class="w-full text-xs font-mono px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 transition-all">Analyze</button>
+          </div>
+          <div id="hash-output" class="mt-3 p-3 rounded-lg bg-black/40 text-xs font-mono text-slate-400 min-h-[2.5rem]"></div>
+        </div>
+
+        <!-- URL Encoder/Decoder -->
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+          <h3 class="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-link text-emerald-400"></i>URL Encoder / Decoder
+          </h3>
+          <input
+            id="url-input"
+            type="text"
+            class="w-full bg-slate-800/80 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 border border-slate-700 outline-none focus:border-emerald-500/50 font-mono transition-all"
+            placeholder="Enter URL or encoded string..."
+          >
+          <div class="flex gap-2 mt-3">
+            <button id="url-encode-btn" class="flex-1 text-xs font-mono px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 transition-all">Encode</button>
+            <button id="url-decode-btn" class="flex-1 text-xs font-mono px-3 py-2 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition-all">Decode</button>
+          </div>
+          <div id="url-output" class="mt-3 p-3 rounded-lg bg-black/40 text-xs font-mono text-slate-400 min-h-[2.5rem] break-all"></div>
+        </div>
+
+        <!-- Password Generator -->
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+          <h3 class="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-key text-emerald-400"></i>Password Generator
+          </h3>
+          <div class="mb-3">
+            <label class="flex items-center justify-between text-xs text-slate-400 mb-1">
+              <span>Length</span>
+              <span id="pw-length-display" class="font-mono text-emerald-300">16</span>
+            </label>
+            <input
+              id="pw-length"
+              type="range"
+              min="8"
+              max="64"
+              value="16"
+              class="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-emerald-500"
+            >
+          </div>
+          <div class="grid grid-cols-2 gap-2 mb-3">
+            <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+              <input type="checkbox" id="pw-upper" checked class="accent-emerald-500 rounded">
+              Uppercase
+            </label>
+            <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+              <input type="checkbox" id="pw-lower" checked class="accent-emerald-500 rounded">
+              Lowercase
+            </label>
+            <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+              <input type="checkbox" id="pw-numbers" checked class="accent-emerald-500 rounded">
+              Numbers
+            </label>
+            <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+              <input type="checkbox" id="pw-symbols" checked class="accent-emerald-500 rounded">
+              Symbols
+            </label>
+          </div>
+          <button id="pw-generate-btn" class="w-full text-xs font-mono px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 transition-all mb-3">Generate</button>
+          <div class="flex items-center gap-2">
+            <div id="pw-output" class="flex-1 p-3 rounded-lg bg-black/40 text-xs font-mono text-emerald-300 min-h-[2.5rem] break-all"></div>
+            <button id="pw-copy-btn" class="shrink-0 p-3 rounded-lg bg-slate-800 text-slate-400 hover:text-emerald-300 border border-slate-700 hover:border-emerald-500/40 transition-all" title="Copy to clipboard">
+              <i class="fa-solid fa-copy text-sm"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────────────────────── -->
+    <!-- VIEW 6: Auth Form                         -->
+    <!-- ───────────────────────────────────────── -->
+    <section id="view-auth" class="hidden max-w-md mx-auto">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 neon-border">
+        <!-- Lock Icon -->
+        <div class="flex justify-center mb-6">
+          <div class="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+            <i class="fa-solid fa-lock text-2xl text-emerald-400"></i>
+          </div>
+        </div>
+
+        <!-- Title -->
+        <h2 id="auth-title" class="text-xl font-bold text-center text-slate-100 mb-6">Sign In</h2>
+
+        <form id="auth-form" class="space-y-4">
+          <!-- Full Name (hidden for sign in) -->
+          <div id="auth-name-field" class="hidden">
+            <label class="block text-xs text-slate-400 mb-1.5 font-medium">Full Name</label>
+            <input
+              id="auth-name"
+              type="text"
+              class="w-full bg-slate-800/80 rounded-lg px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 border border-slate-700 outline-none focus:border-emerald-500/50 transition-all"
+              placeholder="Enter your full name"
+            >
+          </div>
+
+          <!-- Email / User ID -->
+          <div>
+            <label class="block text-xs text-slate-400 mb-1.5 font-medium">Email / User ID</label>
+            <input
+              id="auth-email"
+              type="text"
+              class="w-full bg-slate-800/80 rounded-lg px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 border border-slate-700 outline-none focus:border-emerald-500/50 transition-all"
+              placeholder="you@example.com"
+              required
+            >
+          </div>
+
+          <!-- Password -->
+          <div>
+            <label class="block text-xs text-slate-400 mb-1.5 font-medium">Password</label>
+            <input
+              id="auth-password"
+              type="password"
+              class="w-full bg-slate-800/80 rounded-lg px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 border border-slate-700 outline-none focus:border-emerald-500/50 transition-all"
+              placeholder="••••••••"
+              required
+            >
+          </div>
+
+          <!-- Submit -->
+          <button type="submit" class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors mt-2">
+            Enter Terminal
+          </button>
+        </form>
+
+        <!-- Toggle Link -->
+        <p class="text-center mt-5">
+          <button id="auth-toggle" class="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">
+            New here? Create free account →
+          </button>
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- FOOTER                                        -->
+  <!-- ══════════════════════════════════════════════ -->
+  <footer class="relative z-10 border-t border-slate-800/60 mt-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center space-y-2">
+      <p class="text-xs text-amber-400/80">
+        <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+        For educational and defensive cybersecurity research only.
+      </p>
+      <p class="text-xs text-slate-600">
+        &copy; 2026 RootCraft &mdash; Open Source Cybersecurity Learning Platform
+      </p>
+    </div>
+  </footer>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- TOAST NOTIFICATION                            -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-800 border border-emerald-500/30 shadow-lg neon-border">
+      <i id="toast-icon" class="fa-solid fa-check-circle text-emerald-400"></i>
+      <span id="toast-message" class="text-sm text-slate-200"></span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- SCRIPTS                                       -->
+  <!-- ══════════════════════════════════════════════ -->
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
