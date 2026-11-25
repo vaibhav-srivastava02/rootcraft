@@ -675,6 +675,23 @@ ESTAB  10.10.10.100:22    10.10.10.2:51234`
 
   const WEAK_PASSWORDS = ['123456', 'password', 'admin', 'admin123', 'root', 'qwerty', 'letmein', '12345678', 'pass123'];
 
+  // Optional Supabase Cloud Sync (for live cross-device login & audit logs)
+  const SUPABASE_URL = 'https://umgslvxzihmuykyqtdii.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVtZ3Nsdnh6aWhtdXlreXF0ZGlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1ODE4MTUsImV4cCI6MjExMTE1NzgxNX0.yB4BgzvC3ly2Za4V6y_X4J0pV4sXGb4HwT7hT9Ft0fo';
+  const hasSupabase = () => Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+  async function sbFetch(path, options = {}) {
+    return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      ...options,
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      }
+    });
+  }
+
   async function sha256Hex(str) {
     const buf = new TextEncoder().encode(str);
     const hash = await crypto.subtle.digest('SHA-256', buf);
@@ -729,15 +746,34 @@ ESTAB  10.10.10.100:22    10.10.10.2:51234`
   }
 
   function recordLoginAudit(entry) {
-    let logs = [];
-    try { logs = JSON.parse(localStorage.getItem('login_audit_logs') || '[]'); } catch (e) {}
-    logs.unshift({
+    const fullEntry = {
       id: 'LOG-' + Date.now().toString(36).toUpperCase(),
       timestamp: new Date().toISOString(),
       userAgent: navigator.userAgent,
       ...entry
-    });
+    };
+    let logs = [];
+    try { logs = JSON.parse(localStorage.getItem('login_audit_logs') || '[]'); } catch (e) {}
+    logs.unshift(fullEntry);
     localStorage.setItem('login_audit_logs', JSON.stringify(logs.slice(0, 200)));
+
+    if (hasSupabase()) {
+      sbFetch('login_audit_logs', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: fullEntry.id,
+          timestamp: fullEntry.timestamp,
+          email: fullEntry.email,
+          username: fullEntry.username,
+          action: fullEntry.action,
+          target: fullEntry.target,
+          status: fullEntry.status,
+          risk: fullEntry.risk,
+          flags: fullEntry.flags || [],
+          user_agent: fullEntry.userAgent
+        })
+      }).catch(() => {});
+    }
   }
 
   if (authToggle) authToggle.addEventListener('click', () => {
@@ -761,7 +797,18 @@ ESTAB  10.10.10.100:22    10.10.10.2:51234`
     let blocked = [];
     try { blocked = JSON.parse(localStorage.getItem('blocked_accounts') || '[]'); } catch (e) {}
 
-    if (blocked.includes(emailLower)) {
+    let cloudUser = null;
+    if (hasSupabase()) {
+      try {
+        const res = await sbFetch(`rootcraft_users?email=eq.${encodeURIComponent(emailLower)}&select=*`);
+        if (res.ok) {
+          const rows = await res.json();
+          if (rows && rows.length > 0) cloudUser = rows[0];
+        }
+      } catch (e) {}
+    }
+
+    if (blocked.includes(emailLower) || (cloudUser && cloudUser.blocked)) {
       recordLoginAudit({
         email,
         username,
@@ -797,7 +844,7 @@ ESTAB  10.10.10.100:22    10.10.10.2:51234`
         showToast('Password too weak! Use 6+ characters (avoid common passwords).');
         return;
       }
-      if (users[emailLower]) {
+      if (users[emailLower] || cloudUser) {
         recordLoginAudit({ email, username, action, target: 'User Portal', status: 'FAILED', risk: 'LOW', flags: ['Account Already Exists'] });
         showToast('Account already exists — please Sign In instead.');
         return;
@@ -810,9 +857,22 @@ ESTAB  10.10.10.100:22    10.10.10.2:51234`
         createdAt: new Date().toISOString()
       };
       saveRegisteredUsers(users);
+      if (hasSupabase()) {
+        await sbFetch('rootcraft_users', {
+          method: 'POST',
+          body: JSON.stringify({
+            email: emailLower,
+            name: fullName || username,
+            password_hash: passwordHash,
+            blocked: false
+          })
+        }).catch(() => {});
+      }
       recordLoginAudit({ email: emailLower, username, action: 'SIGNUP', target: 'User Portal', status: 'SUCCESS', risk: 'LOW', flags: [] });
     } else {
-      const existing = users[emailLower];
+      const existing = cloudUser
+        ? { email: cloudUser.email, passwordHash: cloudUser.password_hash }
+        : users[emailLower];
       if (!existing) {
         recordLoginAudit({ email, username, action: 'SIGNIN', target: 'User Portal', status: 'FAILED', risk: flags.includes('Brute-Force Attempt') ? 'CRITICAL' : 'HIGH', flags: [...flags, 'Unregistered Account'] });
         showToast('Account not found. Please create a free account first.');
