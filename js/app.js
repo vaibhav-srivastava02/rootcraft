@@ -675,6 +675,21 @@ ESTAB  10.10.10.100:22    10.10.10.2:51234`
 
   const WEAK_PASSWORDS = ['123456', 'password', 'admin', 'admin123', 'root', 'qwerty', 'letmein', '12345678', 'pass123'];
 
+  async function sha256Hex(str) {
+    const buf = new TextEncoder().encode(str);
+    const hash = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function getRegisteredUsers() {
+    try { return JSON.parse(localStorage.getItem('rootcraft_users') || '{}'); }
+    catch (e) { return {}; }
+  }
+
+  function saveRegisteredUsers(users) {
+    localStorage.setItem('rootcraft_users', JSON.stringify(users));
+  }
+
   function analyzeLoginAttempt(email, password, name) {
     const flags = [];
     const combined = `${email} ${name || ''}`;
@@ -692,19 +707,19 @@ ESTAB  10.10.10.100:22    10.10.10.2:51234`
       flags.push('Privileged ID Target');
     }
 
-    // Check recent attempts from same email in last 2 minutes
+    // Check recent failed attempts from same email in last 2 minutes
     let logs = [];
     try { logs = JSON.parse(localStorage.getItem('login_audit_logs') || '[]'); } catch (e) {}
     const twoMinsAgo = Date.now() - 2 * 60 * 1000;
-    const recentSameId = logs.filter(l => l.email === email && new Date(l.timestamp).getTime() > twoMinsAgo);
-    if (recentSameId.length >= 2) {
-      flags.push('Rapid / Brute-Force Pattern');
+    const recentFails = logs.filter(l => (l.email || '').toLowerCase() === email.toLowerCase() && l.status === 'FAILED' && new Date(l.timestamp).getTime() > twoMinsAgo);
+    if (recentFails.length >= 2) {
+      flags.push('Brute-Force Attempt');
     }
 
     let risk = 'LOW';
-    if (flags.includes('SQLi Pattern') || flags.includes('XSS Payload')) {
+    if (flags.includes('SQLi Pattern') || flags.includes('XSS Payload') || flags.includes('Brute-Force Attempt')) {
       risk = 'CRITICAL';
-    } else if (flags.includes('Rapid / Brute-Force Pattern') || flags.includes('Privileged ID Target')) {
+    } else if (flags.includes('Privileged ID Target')) {
       risk = 'HIGH';
     } else if (flags.includes('Weak Password')) {
       risk = 'MEDIUM';
@@ -722,7 +737,6 @@ ESTAB  10.10.10.100:22    10.10.10.2:51234`
       userAgent: navigator.userAgent,
       ...entry
     });
-    // Keep latest 200 entries
     localStorage.setItem('login_audit_logs', JSON.stringify(logs.slice(0, 200)));
   }
 
@@ -730,24 +744,28 @@ ESTAB  10.10.10.100:22    10.10.10.2:51234`
     isSignup = !isSignup;
     if (authTitle) authTitle.textContent = isSignup ? 'Create Account' : 'Sign In';
     if (authNameField) authNameField.classList.toggle('hidden', !isSignup);
+    const submitBtn = authForm?.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.textContent = isSignup ? 'Create Free Account' : 'Enter Terminal';
     if (authToggle) authToggle.textContent = isSignup ? '← Back to Sign In' : 'New here? Create free account →';
   });
 
-  if (authForm) authForm.addEventListener('submit', e => {
+  if (authForm) authForm.addEventListener('submit', async e => {
     e.preventDefault();
     const email = (document.getElementById('auth-email').value || '').trim();
+    const emailLower = email.toLowerCase();
     const password = document.getElementById('auth-password').value || '';
     const fullName = (document.getElementById('auth-name')?.value || '').trim();
     const username = email.includes('@') ? email.split('@')[0] : email;
+    const action = isSignup ? 'SIGNUP' : 'SIGNIN';
 
     let blocked = [];
     try { blocked = JSON.parse(localStorage.getItem('blocked_accounts') || '[]'); } catch (e) {}
 
-    if (blocked.includes(email.toLowerCase())) {
+    if (blocked.includes(emailLower)) {
       recordLoginAudit({
         email,
         username,
-        action: isSignup ? 'SIGNUP' : 'SIGNIN',
+        action,
         target: 'User Portal',
         status: 'BLOCKED',
         risk: 'CRITICAL',
@@ -760,45 +778,58 @@ ESTAB  10.10.10.100:22    10.10.10.2:51234`
     const { flags, risk } = analyzeLoginAttempt(email, password, fullName);
 
     if (flags.includes('SQLi Pattern') || flags.includes('XSS Payload')) {
-      recordLoginAudit({
-        email,
-        username,
-        action: isSignup ? 'SIGNUP' : 'SIGNIN',
-        target: 'User Portal',
-        status: 'FAILED',
-        risk,
-        flags
-      });
+      recordLoginAudit({ email, username, action, target: 'User Portal', status: 'FAILED', risk: 'CRITICAL', flags });
       showToast('Security alert: Suspicious input blocked & logged');
       return;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      recordLoginAudit({
-        email,
-        username,
-        action: isSignup ? 'SIGNUP' : 'SIGNIN',
-        target: 'User Portal',
-        status: 'FAILED',
-        risk: risk === 'LOW' ? 'MEDIUM' : risk,
-        flags: [...flags, 'Malformed Email ID']
-      });
+      recordLoginAudit({ email, username, action, target: 'User Portal', status: 'FAILED', risk: risk === 'LOW' ? 'MEDIUM' : risk, flags: [...flags, 'Malformed Email ID'] });
       showToast('Please enter a valid email address');
       return;
     }
 
-    recordLoginAudit({
-      email,
-      username,
-      action: isSignup ? 'SIGNUP' : 'SIGNIN',
-      target: 'User Portal',
-      status: 'SUCCESS',
-      risk,
-      flags
-    });
+    const users = getRegisteredUsers();
 
-    localStorage.setItem('cyber_auth', JSON.stringify({ email, username }));
-    // Update all auth button text elements
+    if (isSignup) {
+      if (flags.includes('Weak Password')) {
+        recordLoginAudit({ email, username, action, target: 'User Portal', status: 'FAILED', risk: 'MEDIUM', flags });
+        showToast('Password too weak! Use 6+ characters (avoid common passwords).');
+        return;
+      }
+      if (users[emailLower]) {
+        recordLoginAudit({ email, username, action, target: 'User Portal', status: 'FAILED', risk: 'LOW', flags: ['Account Already Exists'] });
+        showToast('Account already exists — please Sign In instead.');
+        return;
+      }
+      const passwordHash = await sha256Hex(password);
+      users[emailLower] = {
+        name: fullName || username,
+        email: emailLower,
+        passwordHash,
+        createdAt: new Date().toISOString()
+      };
+      saveRegisteredUsers(users);
+      recordLoginAudit({ email: emailLower, username, action: 'SIGNUP', target: 'User Portal', status: 'SUCCESS', risk: 'LOW', flags: [] });
+    } else {
+      const existing = users[emailLower];
+      if (!existing) {
+        recordLoginAudit({ email, username, action: 'SIGNIN', target: 'User Portal', status: 'FAILED', risk: flags.includes('Brute-Force Attempt') ? 'CRITICAL' : 'HIGH', flags: [...flags, 'Unregistered Account'] });
+        showToast('Account not found. Please create a free account first.');
+        return;
+      }
+      const enteredHash = await sha256Hex(password);
+      if (enteredHash !== existing.passwordHash) {
+        const failFlags = Array.from(new Set([...flags.filter(f => f !== 'Weak Password'), 'Wrong Password']));
+        const failRisk = failFlags.includes('Brute-Force Attempt') ? 'CRITICAL' : 'HIGH';
+        recordLoginAudit({ email: emailLower, username, action: 'SIGNIN', target: 'User Portal', status: 'FAILED', risk: failRisk, flags: failFlags });
+        showToast('Incorrect password! Attempt logged.');
+        return;
+      }
+      recordLoginAudit({ email: emailLower, username, action: 'SIGNIN', target: 'User Portal', status: 'SUCCESS', risk: 'LOW', flags: [] });
+    }
+
+    localStorage.setItem('cyber_auth', JSON.stringify({ email: emailLower, username }));
     document.querySelectorAll('#auth-btn-text, .auth-btn-text-mobile').forEach(el => {
       el.textContent = username;
     });
